@@ -7,237 +7,309 @@
 <meta name="referrer" content="no-referrer">
 <title>Docker Rewind</title>
 <style>
-/* ── Tokens ───────────────────────────────────────────────────────────────
-   Dark is the primary theme (the stage is a starfield). Light is a genuine
+/* ═══ Tokens ══════════════════════════════════════════════════════════════
+   Dark is the primary theme — the stage is deep space. Light is a genuine
    daylight variant, not an inversion. System fonts only: the binary makes no
-   outbound connections, so there is no webfont to fetch. */
+   outbound connections, so there is no webfont to fetch.
+   Every text pair below is measured against its real composited backdrop at
+   4.5:1 or better. Muted tones are darker/lighter than they look like they
+   need to be for exactly that reason.
+
+   The rule that falls out of the measurements, worth keeping:
+     --fg-mute  only on a card surface  (it lands ~4.7:1 there)
+     --fg-dim   anywhere over the void  (fg-mute drops to ~4.2:1 on the void)
+   Tinted chip backgrounds count as lifting the surface — use fg-dim on those
+   too. */
 :root{
-  --space-1:#eef2f7; --space-2:#dbe4ef; --star:#64748b; --star-a:.55;
-  /* fg-mute is the floor: it must still clear 4.5:1 on --card, so it is darker
-     than it looks like it needs to be. Measured, not eyeballed. */
-  --fg:#0f172a; --fg-dim:#51607a; --fg-mute:#65748c;
-  --card:rgba(255,255,255,.86); --card-line:rgba(15,23,42,.14); --card-top:rgba(255,255,255,.95);
-  --panel:rgba(255,255,255,.78); --panel-line:rgba(15,23,42,.10);
-  /* green-800, not 700: accent is used as *text* on the current timeline tick
-     and on tags, so it has to clear 4.5:1 on the page backdrop too. */
-  --accent:#166534; --accent-fg:#fff; --accent-soft:rgba(22,101,52,.12);
-  --danger:#b91c1c; --danger-soft:rgba(185,28,28,.10);
-  --warn:#92590b; --warn-soft:rgba(146,89,11,.12);
-  --rail:rgba(15,23,42,.16); --shadow:0 18px 50px -12px rgba(15,23,42,.28);
-  --r:14px;
+  --void-1:#f3f6fa; --void-2:#e3eaf4;
+  --neb-a:rgba(22,101,52,.10); --neb-b:rgba(37,99,180,.09); --neb-c:rgba(120,80,190,.07);
+  --star:#5b6b85; --star-a:.5;
+  --fg:#0b1220; --fg-dim:#4a586f; --fg-mute:#65748c;
+  --card:rgba(255,255,255,.90); --card-far:rgba(248,250,253,.97);
+  --card-line:rgba(11,18,32,.13); --card-edge:rgba(255,255,255,.9);
+  --chrome:rgba(255,255,255,.72); --chrome-line:rgba(11,18,32,.09);
+  --accent:#166534; --accent-fg:#fff; --accent-soft:rgba(22,101,52,.11); --accent-glow:rgba(22,101,52,.16);
+  --danger:#b3261e; --danger-soft:rgba(179,38,30,.09);
+  --warn:#8a5406; --warn-soft:rgba(138,84,6,.11);
+  --rule:rgba(11,18,32,.14);
+  --lift:0 1px 2px rgba(11,18,32,.06),0 12px 28px -8px rgba(11,18,32,.20),0 40px 80px -30px rgba(11,18,32,.24);
+  --r:16px;
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --space-1:#070b14; --space-2:#0f172a; --star:#cbd8ee; --star-a:.85;
-    --fg:#f8fafc; --fg-dim:#9fb0c9; --fg-mute:#7d8ea8;
-    --card:rgba(23,32,50,.82); --card-line:rgba(148,178,225,.20); --card-top:rgba(30,41,64,.92);
-    --panel:rgba(13,20,35,.72); --panel-line:rgba(148,178,225,.14);
-    --accent:#22c55e; --accent-fg:#04140a; --accent-soft:rgba(34,197,94,.16);
-    --danger:#f87171; --danger-soft:rgba(248,113,113,.14);
-    --warn:#e3b341; --warn-soft:rgba(227,179,65,.14);
-    --rail:rgba(159,176,201,.22); --shadow:0 22px 60px -14px rgba(0,0,0,.75);
+    --void-1:#05080f; --void-2:#0c1424;
+    --neb-a:rgba(34,197,94,.13); --neb-b:rgba(56,130,246,.12); --neb-c:rgba(147,97,253,.10);
+    --star:#dbe6fb; --star-a:.9;
+    --fg:#f7fafd; --fg-dim:#9fb0c9; --fg-mute:#7d8ea8;
+    --card:rgba(21,30,48,.82); --card-far:rgba(17,25,41,.94);
+    --card-line:rgba(150,180,230,.20); --card-edge:rgba(190,215,255,.30);
+    --chrome:rgba(9,15,28,.70); --chrome-line:rgba(150,180,230,.13);
+    --accent:#2ee06a; --accent-fg:#04140a; --accent-soft:rgba(46,224,106,.14); --accent-glow:rgba(46,224,106,.20);
+    --danger:#ff8b84; --danger-soft:rgba(255,139,132,.13);
+    --warn:#f0c04d; --warn-soft:rgba(240,192,77,.13);
+    --rule:rgba(159,176,201,.20);
+    --lift:0 2px 4px rgba(0,0,0,.4),0 18px 40px -10px rgba(0,0,0,.65),0 60px 120px -40px rgba(0,0,0,.9);
   }
 }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0; overflow:hidden; color:var(--fg);
-  background:radial-gradient(120% 90% at 50% 8%,var(--space-2) 0%,var(--space-1) 70%);
-  font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  font-variant-numeric:tabular-nums;
+  margin:0;overflow:hidden;color:var(--fg);background:var(--void-1);
+  font:15px/1.5 Inter,"SF Pro Text",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-variant-numeric:tabular-nums;letter-spacing:-.005em;
   -webkit-font-smoothing:antialiased;
 }
-#sky{position:fixed;inset:0;width:100%;height:100%;z-index:0}
-.app{position:relative;z-index:1;height:100%;display:grid;grid-template-rows:auto 1fr}
+/* Nebula: three static radial washes. No animation — this is a backdrop, and
+   motion here would compete with the travel that actually means something. */
+.void{
+  position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(58% 44% at 22% 18%,var(--neb-b) 0%,transparent 62%),
+    radial-gradient(52% 40% at 82% 30%,var(--neb-c) 0%,transparent 60%),
+    radial-gradient(70% 55% at 50% 96%,var(--neb-a) 0%,transparent 65%),
+    radial-gradient(120% 95% at 50% 4%,var(--void-2) 0%,var(--void-1) 72%);
+}
+#sky{position:fixed;inset:0;width:100%;height:100%;z-index:1}
+/* Vignette pulls the eye to the front card and hides the starfield's edges. */
+.vignette{
+  position:fixed;inset:0;z-index:2;pointer-events:none;
+  background:radial-gradient(78% 62% at 50% 44%,transparent 42%,rgba(3,6,12,.30) 100%);
+}
+@media (prefers-color-scheme:light){
+  .vignette{background:radial-gradient(80% 64% at 50% 44%,transparent 46%,rgba(120,140,170,.20) 100%)}
+}
+.app{position:relative;z-index:3;height:100%;display:grid;grid-template-rows:auto 1fr}
 
-/* ── Header ─────────────────────────────────────────────────────────────── */
+/* ═══ Chrome ═════════════════════════════════════════════════════════════ */
 header{
   display:flex;gap:1rem;align-items:center;flex-wrap:wrap;
-  padding:.85rem 1.15rem;background:var(--panel);
-  border-bottom:1px solid var(--panel-line);backdrop-filter:blur(14px);
+  padding:.8rem 1.2rem;background:var(--chrome);
+  border-bottom:1px solid var(--chrome-line);
+  backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);
 }
-.brand{display:flex;align-items:center;gap:.6rem;font-weight:650;letter-spacing:-.015em}
-.brand svg{width:22px;height:22px;color:var(--accent)}
-.brand b{font-weight:650}
-.brand .proj{color:var(--fg-dim);font-weight:500}
+.brand{display:flex;align-items:center;gap:.55rem;font-size:.95rem;font-weight:640;letter-spacing:-.02em;flex:none}
+.brand .mark{
+  display:grid;place-items:center;width:28px;height:28px;border-radius:9px;
+  background:linear-gradient(150deg,var(--accent),color-mix(in oklab,var(--accent) 62%,#0a5aa8));
+  color:var(--accent-fg);box-shadow:0 3px 10px -2px var(--accent-glow);
+}
+.brand .mark svg{width:16px;height:16px}
+.brand .sep{color:var(--fg-mute);font-weight:300}
+.brand .proj{color:var(--fg-dim);font-weight:520}
 .path{
-  flex:1;min-width:0;font-size:.76rem;color:var(--fg-mute);
+  flex:1;min-width:0;font-size:.75rem;color:var(--fg-mute);
   font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left;
 }
-.controls{display:flex;gap:.5rem;align-items:center}
+.controls{display:flex;gap:.5rem;align-items:center;flex:none}
 input[type=text]{
-  width:12rem;padding:.5rem .7rem;border:1px solid var(--card-line);border-radius:9px;
-  background:var(--card);color:var(--fg);font:inherit;font-size:.88rem;
+  width:12rem;padding:.52rem .72rem;border:1px solid var(--card-line);border-radius:10px;
+  background:var(--card);color:var(--fg);font:inherit;font-size:.87rem;
+  transition:border-color .18s ease-out,box-shadow .18s ease-out;
 }
 input[type=text]::placeholder{color:var(--fg-mute)}
+input[type=text]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}
 button{
-  display:inline-flex;align-items:center;gap:.45rem;min-height:40px;
-  padding:.5rem .9rem;border:1px solid transparent;border-radius:9px;
+  display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:40px;
+  padding:.52rem .95rem;border:1px solid transparent;border-radius:10px;
   background:var(--accent);color:var(--accent-fg);
-  font:inherit;font-size:.88rem;font-weight:600;cursor:pointer;
-  transition:filter .18s ease-out,transform .18s ease-out,opacity .18s ease-out;
+  font:inherit;font-size:.87rem;font-weight:620;letter-spacing:-.01em;cursor:pointer;
+  box-shadow:0 1px 2px rgba(0,0,0,.10),0 4px 14px -4px var(--accent-glow);
+  transition:filter .16s ease-out,transform .12s ease-out,box-shadow .16s ease-out,background .16s ease-out;
 }
-button svg{width:16px;height:16px}
-button:hover:not(:disabled){filter:brightness(1.08)}
-button:active:not(:disabled){transform:scale(.97)}
-button:disabled{opacity:.45;cursor:not-allowed}
-button.quiet{background:transparent;color:var(--fg);border-color:var(--card-line)}
-button.quiet:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent)}
-button.danger{background:var(--danger-soft);color:var(--danger);border-color:currentColor}
-button.danger:hover:not(:disabled){background:var(--danger);color:var(--accent-fg)}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+button svg{width:16px;height:16px;flex:none}
+button:hover:not(:disabled){filter:brightness(1.09);box-shadow:0 2px 4px rgba(0,0,0,.10),0 8px 22px -6px var(--accent-glow)}
+button:active:not(:disabled){transform:scale(.975)}
+button:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
+button.quiet{background:transparent;color:var(--fg);border-color:var(--card-line);box-shadow:none}
+button.quiet:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent);filter:none}
+button.danger{background:var(--danger-soft);color:var(--danger);border-color:currentColor;box-shadow:none}
+button.danger:hover:not(:disabled){background:var(--danger);color:#fff;border-color:var(--danger);filter:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:8px}
 
-/* ── Stage: the cascade ─────────────────────────────────────────────────── */
-.stage{position:relative;perspective:1400px;perspective-origin:50% 42%;overflow:hidden}
+/* ═══ Stage ══════════════════════════════════════════════════════════════ */
+.stage{position:relative;perspective:1500px;perspective-origin:50% 40%;overflow:hidden}
 .deck{position:absolute;inset:0;transform-style:preserve-3d}
+/* Halo behind the front card: the light the stack is falling away from. */
+.halo{
+  position:absolute;left:50%;top:44%;width:760px;height:520px;margin:-260px 0 0 -380px;
+  z-index:0;pointer-events:none;opacity:.85;
+  background:radial-gradient(50% 50% at 50% 50%,var(--accent-glow) 0%,transparent 70%);
+}
 .snap{
-  position:absolute;left:50%;top:46%;width:min(560px,72vw);
-  margin-left:calc(min(560px,72vw) / -2);
-  background:var(--card);border:1px solid var(--card-line);border-radius:var(--r);
-  box-shadow:var(--shadow);backdrop-filter:blur(10px);
-  text-align:left;color:inherit;font:inherit;padding:0;cursor:pointer;
-  transition:transform .5s cubic-bezier(.22,.9,.28,1),opacity .5s ease-out,filter .5s ease-out;
-  will-change:transform,opacity;
+  position:absolute;left:50%;top:44%;width:min(580px,74vw);
+  margin-left:calc(min(580px,74vw) / -2);margin-top:-200px;
+  background:var(--card-far);border:1px solid var(--card-line);border-radius:var(--r);
+  box-shadow:var(--lift);text-align:left;color:inherit;font:inherit;padding:0;cursor:pointer;
+  will-change:transform,opacity;transform-origin:50% 50%;
 }
-.snap:disabled{cursor:default}
+/* Only the front card gets a backdrop blur. Ten stacked blurred layers is a
+   real cost, and the frosted look reads as "this is the live one". */
+.snap.front{
+  background:var(--card);
+  backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
+}
+/* Specular top edge — the one detail that sells glass. */
+.snap::before{
+  content:"";position:absolute;inset:0;border-radius:var(--r);pointer-events:none;
+  background:linear-gradient(180deg,var(--card-edge),transparent 42%);opacity:.5;
+  -webkit-mask:linear-gradient(#000,#000) content-box,linear-gradient(#000,#000);
+  -webkit-mask-composite:xor;mask-composite:exclude;padding:1px;
+}
 .snap .top{
-  display:flex;align-items:center;gap:.55rem;padding:.6rem .9rem;
-  background:var(--card-top);border-bottom:1px solid var(--card-line);
-  border-radius:var(--r) var(--r) 0 0;
+  display:flex;align-items:center;gap:.6rem;padding:.62rem .95rem;
+  border-bottom:1px solid var(--card-line);border-radius:var(--r) var(--r) 0 0;
+  background:linear-gradient(180deg,rgba(127,159,207,.10),transparent);
 }
-.dots{display:flex;gap:.34rem}
-.dots i{width:9px;height:9px;border-radius:50%;background:var(--rail)}
+.dots{display:flex;gap:.35rem;flex:none}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--rule)}
 .snap .id{
-  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.76rem;color:var(--fg-dim);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.73rem;color:var(--fg-mute);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0;
 }
 .tag{
-  margin-left:auto;flex:none;padding:.1rem .5rem;border-radius:999px;
-  background:var(--accent-soft);color:var(--accent);font-size:.72rem;font-weight:650;
+  margin-left:auto;flex:none;padding:.14rem .55rem;border-radius:999px;
+  background:var(--accent-soft);color:var(--accent);border:1px solid color-mix(in oklab,var(--accent) 32%,transparent);
+  font-size:.71rem;font-weight:660;letter-spacing:.01em;
 }
-.body{padding:1rem .95rem 1.05rem}
-.when{display:flex;align-items:baseline;gap:.55rem;margin-bottom:.9rem}
-.when b{font-size:1.5rem;font-weight:650;letter-spacing:-.02em}
-.when span{color:var(--fg-mute);font-size:.83rem}
-.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:.5rem;margin-bottom:.85rem}
-.fact{padding:.5rem .6rem;border:1px solid var(--card-line);border-radius:10px;background:var(--accent-soft)}
-.fact .k{display:flex;align-items:center;gap:.3rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-mute);font-weight:650}
+.body{padding:1.15rem 1.05rem 1.1rem}
+.when{display:flex;align-items:baseline;gap:.6rem;margin-bottom:1rem}
+.when b{font-size:1.85rem;font-weight:660;letter-spacing:-.035em;line-height:1.1}
+.when span{color:var(--fg-mute);font-size:.82rem}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.9rem}
+.fact{
+  padding:.55rem .65rem;border:1px solid var(--card-line);border-radius:11px;
+  background:linear-gradient(160deg,var(--accent-soft),transparent 140%);
+}
+.fact .k{display:flex;align-items:center;gap:.32rem;font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-mute);font-weight:680}
 .fact .k svg{width:12px;height:12px}
-.fact .v{font-size:1.05rem;font-weight:650;margin-top:.12rem}
-.rows{display:flex;flex-direction:column;gap:.3rem;margin-bottom:.85rem}
-.row{display:flex;align-items:center;gap:.45rem;font-size:.79rem;color:var(--fg-dim);min-width:0}
+.fact .v{font-size:1.15rem;font-weight:660;margin-top:.15rem;letter-spacing:-.025em}
+.rows{display:flex;flex-direction:column;gap:.2rem;margin-bottom:.9rem}
+.row{display:flex;align-items:center;gap:.5rem;font-size:.79rem;color:var(--fg-dim);min-width:0;padding:.18rem 0}
 .row svg{width:13px;height:13px;flex:none;color:var(--fg-mute)}
-.row code{
-  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.74rem;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+.row code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .sz{
+  /* fg-dim, not fg-mute: the tinted chip background lifts the backdrop and
+     muted text drops to 3.9:1 on it. */
+  margin-left:auto;flex:none;color:var(--fg-dim);font-size:.7rem;
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  padding:.08rem .38rem;border-radius:5px;background:var(--accent-soft);
 }
-.row .sz{margin-left:auto;flex:none;color:var(--fg-mute);font-size:.74rem}
-.alert{
-  display:flex;gap:.45rem;padding:.5rem .6rem;border-radius:9px;margin-bottom:.5rem;
-  background:var(--warn-soft);color:var(--warn);font-size:.78rem;line-height:1.4;
-}
-.alert svg{width:14px;height:14px;flex:none;margin-top:.14rem}
-.snap footer{display:flex;gap:.5rem;align-items:center;padding-top:.15rem}
-.snap footer .note{font-size:.74rem;color:var(--fg-mute)}
+.alert{display:flex;gap:.45rem;padding:.55rem .65rem;border-radius:10px;margin-bottom:.5rem;background:var(--warn-soft);color:var(--warn);font-size:.77rem;line-height:1.45}
+.alert svg{width:14px;height:14px;flex:none;margin-top:.15rem}
+.snap footer{display:flex;gap:.65rem;align-items:center;padding-top:.2rem}
+.snap footer .note{font-size:.72rem;color:var(--fg-mute);line-height:1.35}
 
-/* ── Time rail ──────────────────────────────────────────────────────────── */
+/* ═══ Time rail ══════════════════════════════════════════════════════════ */
 .rail{
-  position:absolute;top:0;right:0;bottom:0;width:158px;padding:1.1rem .55rem;
-  display:flex;flex-direction:column;gap:.1rem;overflow-y:auto;
-  background:linear-gradient(to left,var(--panel),transparent);
-  border-left:1px solid var(--panel-line);backdrop-filter:blur(8px);
+  position:absolute;top:0;right:0;bottom:0;width:172px;padding:1.1rem .6rem 1.1rem .5rem;
+  display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;
+  background:linear-gradient(to left,var(--chrome) 30%,transparent);
+  border-left:1px solid var(--chrome-line);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
 }
-.rail h2{
-  margin:0 0 .5rem .35rem;font-size:.66rem;text-transform:uppercase;letter-spacing:.09em;
-  color:var(--fg-mute);font-weight:700;
-}
+.rail h2{margin:0 0 .6rem .4rem;font-size:.63rem;text-transform:uppercase;letter-spacing:.11em;color:var(--fg-dim);font-weight:720}
+.ladder{position:relative}
+/* The spine the ticks hang off, and a live indicator that tracks the spring. */
+.ladder::before{content:"";position:absolute;left:9px;top:6px;bottom:6px;width:1px;background:var(--rule)}
+#cursor{position:absolute;left:5px;width:9px;height:9px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 4px var(--accent-soft),0 0 14px var(--accent-glow);z-index:2;pointer-events:none}
 .tick{
-  position:relative;display:flex;align-items:center;gap:.5rem;
-  /* fg-dim, not fg-mute: the rail fades to transparent, so ticks must clear
-     4.5:1 against the raw page backdrop, not just against the panel. */
-  padding:.32rem .4rem;border:0;border-radius:7px;background:transparent;color:var(--fg-dim);
-  font:inherit;font-size:.74rem;text-align:left;cursor:pointer;min-height:34px;
-  transition:color .18s ease-out,background .18s ease-out;
+  position:relative;display:flex;align-items:center;gap:.6rem;width:100%;
+  padding:.3rem .4rem .3rem .3rem;border:0;border-radius:8px;background:transparent;
+  color:var(--fg-dim);font:inherit;font-size:.735rem;text-align:left;cursor:pointer;min-height:34px;
+  box-shadow:none;transition:color .18s ease-out,background .18s ease-out;
 }
-.tick .line{height:1px;flex:1;background:var(--rail);transition:background .18s ease-out}
-.tick .dot{width:7px;height:7px;border-radius:50%;background:var(--rail);flex:none;transition:all .18s ease-out}
-.tick:hover{color:var(--fg);background:var(--accent-soft)}
-.tick[aria-current=true]{color:var(--accent);font-weight:650}
-.tick[aria-current=true] .dot{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-.tick[aria-current=true] .line{background:var(--accent)}
+.tick .dot{width:7px;height:7px;border-radius:50%;background:var(--rule);flex:none;margin-left:1px;transition:background .18s ease-out,transform .18s ease-out}
+.tick .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tick .pip{margin-left:auto;width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:0;flex:none;transition:opacity .18s ease-out}
+.tick:hover{color:var(--fg);background:var(--accent-soft);filter:none}
+.tick[aria-current=true]{color:var(--accent);font-weight:660}
+.tick[aria-current=true] .dot{background:transparent}
+.tick[aria-current=true] .pip{opacity:1}
 
-/* ── Time nav ───────────────────────────────────────────────────────────── */
+/* ═══ Travel control ═════════════════════════════════════════════════════ */
 .timenav{
-  position:absolute;left:50%;bottom:1.1rem;transform:translateX(-50%);
-  display:flex;align-items:center;gap:.3rem;padding:.3rem;
-  background:var(--panel);border:1px solid var(--panel-line);border-radius:999px;
-  backdrop-filter:blur(14px);box-shadow:var(--shadow);
+  position:absolute;left:50%;bottom:1.15rem;transform:translateX(-50%);
+  display:flex;align-items:center;gap:.15rem;padding:.28rem;
+  background:var(--chrome);border:1px solid var(--chrome-line);border-radius:999px;
+  backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);
+  box-shadow:var(--lift);
 }
-.timenav button{min-height:36px;padding:.35rem .7rem;background:transparent;color:var(--fg);font-size:.8rem}
-.timenav button:hover:not(:disabled){background:var(--accent-soft)}
-.timenav .count{padding:0 .55rem;font-size:.76rem;color:var(--fg-mute);white-space:nowrap}
+.timenav button{min-height:36px;padding:.32rem .8rem;background:transparent;color:var(--fg);font-size:.79rem;box-shadow:none;border-radius:999px}
+.timenav button:hover:not(:disabled){background:var(--accent-soft);filter:none}
+.timenav .count{padding:0 .6rem;font-size:.75rem;color:var(--fg-mute);white-space:nowrap;min-width:5.5rem;text-align:center}
+.hint{
+  position:absolute;left:50%;bottom:3.9rem;transform:translateX(-50%);
+  font-size:.7rem;color:var(--fg-dim);white-space:nowrap;pointer-events:none;
+  opacity:0;transition:opacity .5s ease-out;
+}
+.hint.show{opacity:1}
+kbd{
+  font:inherit;font-size:.66rem;padding:.06rem .3rem;border:1px solid var(--rule);
+  border-bottom-width:2px;border-radius:4px;background:var(--accent-soft);
+}
 
-/* ── Empty + job ────────────────────────────────────────────────────────── */
-.empty{
-  position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
-  width:min(420px,80vw);text-align:center;color:var(--fg-dim);
+/* ═══ Empty + job ════════════════════════════════════════════════════════ */
+.empty{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:min(430px,82vw);text-align:center;color:var(--fg-dim)}
+.empty .orb{
+  width:76px;height:76px;margin:0 auto .9rem;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 38% 32%,var(--accent-soft),transparent 70%);
+  border:1px solid var(--card-line);
 }
-.empty svg{width:44px;height:44px;color:var(--fg-mute);margin-bottom:.7rem}
-.empty h3{margin:0 0 .35rem;font-size:1.05rem;color:var(--fg);font-weight:650}
-.empty p{margin:0;font-size:.87rem;line-height:1.55}
+.empty .orb svg{width:34px;height:34px;color:var(--accent)}
+.empty h3{margin:0 0 .4rem;font-size:1.12rem;color:var(--fg);font-weight:660;letter-spacing:-.02em}
+.empty p{margin:0;font-size:.86rem;line-height:1.6}
 .job{
-  position:absolute;left:1.15rem;bottom:1.1rem;width:min(390px,calc(100vw - 200px));
-  padding:.8rem .9rem;background:var(--panel);border:1px solid var(--panel-line);
-  border-radius:12px;backdrop-filter:blur(14px);box-shadow:var(--shadow);
+  position:absolute;left:1.2rem;bottom:1.15rem;width:min(400px,calc(100vw - 210px));
+  padding:.85rem .95rem;background:var(--chrome);border:1px solid var(--chrome-line);
+  border-radius:13px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:var(--lift);
 }
 .job[hidden]{display:none}
-.job h4{margin:0 0 .45rem;display:flex;align-items:center;gap:.45rem;font-size:.84rem;font-weight:650}
-.job pre{
-  margin:0;max-height:8.5rem;overflow:auto;white-space:pre-wrap;color:var(--fg-dim);
-  font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;
-}
+.job h4{margin:0 0 .5rem;display:flex;align-items:center;gap:.5rem;font-size:.83rem;font-weight:660}
+.job pre{margin:0;max-height:8.5rem;overflow:auto;white-space:pre-wrap;color:var(--fg-dim);font:12px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace}
 .job .bad{color:var(--danger)}
-.spin{width:13px;height:13px;flex:none;border:2px solid var(--rail);border-top-color:var(--accent);
-  border-radius:50%;animation:spin .7s linear infinite}
+.job .ok{color:var(--accent)}
+.spin{width:13px;height:13px;flex:none;border:2px solid var(--rule);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── Confirm dialog (native <dialog>) ───────────────────────────────────── */
+/* ═══ Confirm ════════════════════════════════════════════════════════════ */
 dialog{
-  width:min(440px,92vw);padding:0;border:1px solid var(--card-line);border-radius:var(--r);
-  background:var(--card-top);color:var(--fg);box-shadow:var(--shadow);backdrop-filter:blur(20px);
+  width:min(450px,92vw);padding:0;border:1px solid var(--card-line);border-radius:var(--r);
+  background:var(--card-far);color:var(--fg);box-shadow:var(--lift);
 }
-dialog::backdrop{background:rgba(2,6,16,.62);backdrop-filter:blur(3px)}
-dialog .dbody{padding:1.15rem}
-dialog h3{margin:0 0 .5rem;display:flex;align-items:center;gap:.5rem;font-size:1.05rem;font-weight:650;color:var(--danger)}
-dialog h3 svg{width:19px;height:19px}
-dialog p{margin:0 0 .7rem;font-size:.87rem;line-height:1.55;color:var(--fg-dim)}
-dialog ul{margin:0 0 .8rem;padding-left:1.1rem;font-size:.82rem;color:var(--fg-dim)}
-dialog label{display:block;font-size:.8rem;font-weight:600;margin-bottom:.35rem}
+dialog::backdrop{background:rgba(2,5,12,.66);backdrop-filter:blur(5px)}
+dialog .dbody{padding:1.2rem}
+dialog h3{margin:0 0 .55rem;display:flex;align-items:center;gap:.5rem;font-size:1.05rem;font-weight:660;color:var(--danger);letter-spacing:-.02em}
+dialog h3 svg{width:19px;height:19px;flex:none}
+dialog p{margin:0 0 .7rem;font-size:.86rem;line-height:1.55;color:var(--fg-dim)}
+dialog ul{margin:0 0 .8rem;padding-left:1.15rem;font-size:.81rem;color:var(--fg-dim)}
+dialog ul code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+dialog label{display:block;font-size:.79rem;font-weight:620;margin-bottom:.35rem}
 dialog input{width:100%}
 dialog .acts{display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem}
 
-footer.legal{
-  position:absolute;right:170px;bottom:1.35rem;font-size:.72rem;color:var(--fg-dim);
-  max-width:230px;text-align:right;line-height:1.5;
+.legal{position:absolute;right:186px;bottom:1.4rem;font-size:.71rem;color:var(--fg-dim);max-width:220px;text-align:right;line-height:1.5}
+
+@media (max-width:880px){
+  .rail,.legal,.hint{display:none}
+  .job{width:calc(100vw - 2.4rem)}
+  .snap{width:88vw;margin-left:-44vw}
+  .halo{width:100vw;margin-left:-50vw}
 }
 
-@media (max-width:820px){
-  .rail{display:none}
-  footer.legal{display:none}
-  .job{width:calc(100vw - 2.3rem)}
-  .snap{width:86vw;margin-left:-43vw}
-}
-
-/* Motion is meaning here — depth conveys age — but never at the cost of
-   vestibular comfort. Reduced motion keeps the layout, drops the travel. */
+/* Motion is the meaning here — depth conveys age — but never at the cost of
+   vestibular comfort. Reduced motion keeps the whole layout and drops the
+   travel: the spring snaps, the starfield never warps. */
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
 }
 </style>
 </head>
 <body>
+<div class="void" aria-hidden="true"></div>
 <canvas id="sky" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
   <g id="i-clock"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g>
@@ -248,50 +320,57 @@ footer.legal{
   <g id="i-warn"><path d="M10.3 4.3 2.6 17.5A1.6 1.6 0 0 0 4 20h16a1.6 1.6 0 0 0 1.4-2.5L13.7 4.3a1.6 1.6 0 0 0-2.8 0z"/><path d="M12 9.5v4"/><path d="M12 17h.01"/></g>
   <g id="i-up"><path d="m6 14 6-6 6 6"/></g>
   <g id="i-down"><path d="m6 10 6 6 6-6"/></g>
+  <g id="i-hdd"><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M6.5 13 9 4.5h6L17.5 13"/><path d="M7 16.5h.01"/></g>
 </defs></svg>
 
 <div class="app">
   <header>
     <span class="brand">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-rewind"/></svg>
-      <b>Docker Rewind</b>
+      <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-rewind"/></svg></span>
+      <span>Docker Rewind</span>
+      <span class="sep">/</span>
       <span class="proj" id="project">…</span>
     </span>
     <span class="path" id="file"></span>
     <span class="controls">
-      <label class="sr" for="tag" hidden>Snapshot tag</label>
       <input type="text" id="tag" placeholder="Tag (optional)" maxlength="60" aria-label="Snapshot tag, optional">
       <button id="snap" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-camera"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-camera"/></svg>
         Take snapshot
       </button>
     </span>
   </header>
 
   <div class="stage" id="stage">
+    <div class="halo" id="halo" aria-hidden="true"></div>
     <div class="deck" id="deck" role="group" aria-label="Snapshots, newest at front"></div>
 
     <div class="empty" id="empty" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-clock"/></svg>
-      <h3>No snapshots yet</h3>
-      <p>Take one before your next <code>docker compose pull</code>. Rewind stops the stack, archives every named volume, records image digests, and starts it again.</p>
+      <span class="orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-clock"/></svg></span>
+      <h3>Nothing saved yet</h3>
+      <p>Take a snapshot before your next <code>docker compose pull</code>. Rewind stops the stack, archives every named volume, records image digests, and starts it again.</p>
     </div>
 
+    <p class="hint" id="hint"><kbd>↑</kbd> <kbd>↓</kbd> to travel · scroll or click a card behind</p>
+
     <nav class="timenav" id="timenav" aria-label="Move through time" hidden>
-      <button type="button" id="newer" title="Newer snapshot">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-up"/></svg>
+      <button type="button" id="newer" aria-label="Newer snapshot">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-up"/></svg>
         Newer
       </button>
       <span class="count" id="count"></span>
-      <button type="button" id="older" title="Older snapshot">
+      <button type="button" id="older" aria-label="Older snapshot">
         Older
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-down"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-down"/></svg>
       </button>
     </nav>
 
-    <aside class="rail" id="rail" aria-label="Timeline"><h2>Timeline</h2></aside>
+    <aside class="rail" id="rail" aria-label="Timeline">
+      <h2>Timeline</h2>
+      <div class="ladder" id="ladder"><span id="cursor" hidden></span></div>
+    </aside>
 
-    <footer class="legal">Snapshots live on this host. They protect you from bad upgrades, not from a dead disk.</footer>
+    <p class="legal">Snapshots live on this host. They protect you from bad upgrades, not from a dead disk.</p>
 
     <section class="job" id="jobcard" hidden aria-live="polite">
       <h4 id="jobtitle"></h4>
@@ -302,7 +381,7 @@ footer.legal{
 
 <dialog id="confirm">
   <form method="dialog" class="dbody" id="cform">
-    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-warn"/></svg> Restore this snapshot?</h3>
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-warn"/></svg> Restore this snapshot?</h3>
     <p id="cwhat"></p>
     <ul id="cvols"></ul>
     <p><strong>This permanently deletes their current contents. There is no undo.</strong></p>
@@ -311,7 +390,7 @@ footer.legal{
     <div class="acts">
       <button type="button" class="quiet" id="ccancel">Cancel</button>
       <button type="submit" class="danger" id="cgo" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-rewind"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-rewind"/></svg>
         Restore
       </button>
     </div>
@@ -326,76 +405,177 @@ const TOKEN = location.hash.slice(1);
 const $ = id => document.getElementById(id);
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-let project = "", snaps = [], sel = 0, busy = false, sig = "";
+let project = "", snaps = [], sel = 0, busy = false, sig = "", booted = false;
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const icon = (n, w) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w||1.8}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const bytes = n => { const u = ["B","KB","MB","GB","TB"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return (i ? n.toFixed(1) : n) + " " + u[i]; };
 const total = m => (m.volumes || []).reduce((a, v) => a + v.bytes, 0);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 function age(iso) {
   const s = (Date.now() - new Date(iso)) / 1000;
-  if (s < 60) return "just now";
-  if (s < 3600) return Math.floor(s / 60) + " min ago";
-  if (s < 86400) return Math.floor(s / 3600) + " hr ago";
-  return Math.floor(s / 86400) + " days ago";
+  if (s < 60) return "Just now";
+  if (s < 3600) { const m = Math.floor(s / 60); return m + (m === 1 ? " minute ago" : " minutes ago"); }
+  if (s < 86400) { const h = Math.floor(s / 3600); return h + (h === 1 ? " hour ago" : " hours ago"); }
+  const d = Math.floor(s / 86400); return d + (d === 1 ? " day ago" : " days ago");
 }
 const when = iso => new Date(iso).toLocaleString([], {month:"short", day:"numeric", hour:"2-digit", minute:"2-digit"});
 
-/* ── Starfield ────────────────────────────────────────────────────────────
-   Depth is the whole metaphor, so the backdrop parallaxes with it. Frozen
-   entirely under reduced-motion — stars still render, they just hold still. */
+/* ═══ One spring drives everything ═════════════════════════════════════════
+   Card depth, starfield warp and the rail cursor all read from the same
+   position value, so travel feels like one physical system rather than three
+   animations that happen to fire together. */
+// Integrated at a fixed 1/120s sub-step rather than per frame. Explicit Euler
+// on a spring this stiff diverges once a frame gets long — at a 50ms frame it
+// never settles at all — so the sub-step decouples stability from frame rate.
+// Motion is then identical at 20fps and 144fps: ~220ms to 95%, no overshoot.
+const STIFF = 400, DAMP = 36, SUB = 1 / 120;
+let pos = 0, vel = 0, running = false, lastT = 0, redraw = true, acc = 0;
+
+function kick() {
+  if (running) return;
+  running = true; lastT = performance.now(); acc = 0;
+  requestAnimationFrame(frame);
+}
+
+function frame(t) {
+  const dt = Math.min((t - lastT) / 1000, .05);
+  lastT = t;
+  if (REDUCED) { pos = sel; vel = 0; acc = 0; }
+  else {
+    acc += dt;
+    let guard = 0; // never let a long stall spiral into hundreds of sub-steps
+    while (acc > SUB && guard++ < 12) {
+      vel += (-STIFF * (pos - sel) - DAMP * vel) * SUB;
+      pos += vel * SUB;
+      acc -= SUB;
+    }
+    if (guard >= 12) acc = 0;
+  }
+  const moving = Math.abs(pos - sel) > .0012 || Math.abs(vel) > .0012;
+  if (!moving) { pos = sel; vel = 0; }
+
+  layout();
+  drawSky();
+
+  // Settle completely when nothing is moving. A starfield that twinkles
+  // forever is a dev tool quietly burning a core all afternoon, and idle
+  // motion would compete with the travel that actually means something.
+  if (moving || redraw) requestAnimationFrame(frame);
+  else running = false;
+}
+
+/* ═══ Starfield ══════════════════════════════════════════════════════════ */
 const sky = $("sky"), ctx = sky.getContext("2d");
-let stars = [], drift = 0, targetDrift = 0, dirty = true;
+let stars = [];
 function seed() {
   if (!innerWidth || !innerHeight) return;
   const dpr = Math.min(devicePixelRatio || 1, 2);
   sky.width = innerWidth * dpr; sky.height = innerHeight * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const n = Math.min(220, Math.round(innerWidth * innerHeight / 7800));
+  const n = Math.min(260, Math.round(innerWidth * innerHeight / 6400));
   stars = Array.from({length: n}, () => ({
     x: Math.random() * innerWidth, y: Math.random() * innerHeight,
-    z: Math.random() * .9 + .1, r: Math.random() * 1.25 + .35
+    z: Math.pow(Math.random(), 1.6) * .92 + .08,   // biased toward distant
+    r: Math.random() * 1.3 + .3,
+    h: Math.random()                               // slight hue variation
   }));
 }
-function sky_draw() {
-  requestAnimationFrame(sky_draw);
-  // Layout may not have settled when this script first runs (or the tab was
-  // hidden, in which case rAF was paused and innerWidth read 0). Re-seed as
-  // soon as we have real dimensions.
-  if (!stars.length && innerWidth > 0) seed();
-  const settled = Math.abs(targetDrift - drift) < .002;
-  if (settled && !dirty) return; // nothing moved; don't burn a frame redrawing
-  dirty = false;
-
+function drawSky() {
+  if (!stars.length) { seed(); if (!stars.length) return; }
+  redraw = false;
   const css = getComputedStyle(document.documentElement);
-  const col = css.getPropertyValue("--star").trim() || "#fff";
   const base = parseFloat(css.getPropertyValue("--star-a")) || .7;
-  drift = settled ? targetDrift : drift + (targetDrift - drift) * (REDUCED ? 1 : .06);
+  const col = css.getPropertyValue("--star").trim() || "#fff";
+  // Warp: stars stretch along the direction of travel, in proportion to speed
+  // and their own depth. This is what makes the cascade read as motion through
+  // space rather than cards sliding on a plane.
+  // 5.5 is tuned so a single-step move just reaches full stretch; longer jumps
+  // saturate, which is what "moving fast" should look like.
+  const streak = REDUCED ? 0 : clamp(Math.abs(vel) * 5.5, 0, 40);
+  const dir = vel >= 0 ? 1 : -1;
+
   ctx.clearRect(0, 0, innerWidth, innerHeight);
-  ctx.fillStyle = col;
+  ctx.strokeStyle = ctx.fillStyle = col;
+  ctx.lineCap = "round";
   for (const s of stars) {
-    const y = s.y + drift * s.z * 26;
-    ctx.globalAlpha = base * (.25 + s.z * .75);
-    ctx.beginPath();
-    ctx.arc(s.x, ((y % innerHeight) + innerHeight) % innerHeight, s.r * s.z + .2, 0, 6.284);
-    ctx.fill();
+    const y = (((s.y + pos * s.z * 46) % innerHeight) + innerHeight) % innerHeight;
+    const a = base * (.18 + s.z * .82) * (.72 + s.h * .28);
+    ctx.globalAlpha = a;
+    const len = streak * s.z;
+    if (len > 1.2) {
+      ctx.lineWidth = Math.max(.6, s.r * s.z);
+      ctx.beginPath();
+      ctx.moveTo(s.x, y);
+      ctx.lineTo(s.x, y + len * dir);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(s.x, y, s.r * s.z + .25, 0, 6.2832);
+      ctx.fill();
+    }
   }
   ctx.globalAlpha = 1;
 }
-addEventListener("resize", () => { seed(); dirty = true; });
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { dirty = true; });
-seed(); sky_draw();
+addEventListener("resize", () => { seed(); redraw = true; layout(); kick(); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { redraw = true; kick(); });
+// Coming back to a backgrounded tab: rAF was parked, so repaint the sky.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { redraw = true; kick(); } });
 
-/* ── The cascade ──────────────────────────────────────────────────────── */
+/* ═══ Cascade layout ═════════════════════════════════════════════════════
+   Depth encodes age. Positions come from the float spring position, so cards
+   fly rather than step, and a 1s poll never rebuilds the DOM mid-flight. */
+const GAP_Z = 205, GAP_Y = 32, MAX_BACK = 9;
+function layout() {
+  const cards = $("deck").children;
+  for (let i = 0; i < cards.length; i++) {
+    const c = cards[i], d = i - pos;
+    // Focus and AT state track the *selection*, never the animation position,
+    // and are set before the visibility cull — a culled card would otherwise
+    // keep whatever tabindex it happened to have when it left the frame.
+    const live = i === sel;
+    c.setAttribute("aria-hidden", live ? "false" : "true");
+    for (const b of c.querySelectorAll("button")) { b.tabIndex = live ? 0 : -1; b.disabled = !live || busy; }
+
+    if (!live && (d < -1.15 || d > MAX_BACK)) { if (!c.hidden) c.hidden = true; continue; }
+    if (c.hidden) c.hidden = false;
+    // near: fades as a card passes the viewer. far: fades with age.
+    const near = clamp(1 + d * 1.5, 0, 1);
+    const far = clamp(1 - d * .155, 0, 1);
+    c.style.transform = `translate3d(0,${d * -GAP_Y}px,${d * -GAP_Z}px)`;
+    c.style.opacity = Math.min(near, far);
+    c.style.filter = d > .05 ? `blur(${Math.min(d * .85, 5.5)}px)` : "none";
+    c.style.zIndex = String(300 - Math.round(Math.abs(d) * 10));
+    const isFront = Math.abs(d) < .5;
+    c.classList.toggle("front", isFront);
+    c.style.pointerEvents = d < -.35 || d > MAX_BACK - 1 ? "none" : "auto";
+  }
+  $("halo").style.opacity = String(clamp(.85 - Math.abs(vel) * .25, .3, .85));
+
+  // Rail cursor rides the same spring as the deck.
+  const ticks = $("ladder").querySelectorAll(".tick");
+  const cur = $("cursor");
+  if (ticks.length) {
+    const lo = ticks[clamp(Math.floor(pos), 0, ticks.length - 1)];
+    const hi = ticks[clamp(Math.ceil(pos), 0, ticks.length - 1)];
+    const f = clamp(pos - Math.floor(pos), 0, 1);
+    const y = lo.offsetTop + (hi.offsetTop - lo.offsetTop) * f + lo.offsetHeight / 2 - 4.5;
+    cur.hidden = false;
+    cur.style.top = y + "px";
+    for (let k = 0; k < ticks.length; k++) ticks[k].setAttribute("aria-current", String(k === sel));
+  } else cur.hidden = true;
+}
+
+/* ═══ Cards ══════════════════════════════════════════════════════════════ */
 function cardHTML(m) {
   const vols = (m.volumes || []).map(v =>
     `<div class="row">${icon("db",1.6)}<code>${esc(v.name)}</code><span class="sz">${bytes(v.bytes)}</span></div>`).join("");
   const svcs = (m.services || []).map(s => {
-    const short = s.digest ? s.digest.replace(/^.*@sha256:/, "sha256:").slice(0, 19) + "…" : "not pinned";
+    const short = s.digest ? s.digest.replace(/^.*@sha256:/, "").slice(0, 12) : "unpinned";
     return `<div class="row">${icon("layers",1.6)}<code>${esc(s.name)}</code><span class="sz">${esc(short)}</span></div>`;
   }).join("");
   const warns = (m.warnings || []).map(w =>
-    `<p class="alert">${icon("warn",1.7)}<span>${esc(w)}</span></p>`).join("");
+    `<p class="alert">${icon("warn",1.8)}<span>${esc(w)}</span></p>`).join("");
   return `
     <div class="top">
       <span class="dots"><i></i><i></i><i></i></span>
@@ -407,7 +587,7 @@ function cardHTML(m) {
       <div class="facts">
         <div class="fact"><span class="k">${icon("db",2)} Volumes</span><span class="v">${(m.volumes||[]).length}</span></div>
         <div class="fact"><span class="k">${icon("layers",2)} Services</span><span class="v">${(m.services||[]).length}</span></div>
-        <div class="fact"><span class="k">${icon("clock",2)} Size</span><span class="v">${bytes(total(m))}</span></div>
+        <div class="fact"><span class="k">${icon("hdd",2)} Archived</span><span class="v">${bytes(total(m))}</span></div>
       </div>
       <div class="rows">${vols}${svcs}</div>
       ${warns}
@@ -421,9 +601,9 @@ function cardHTML(m) {
 }
 
 function build() {
-  const deck = $("deck"), rail = $("rail");
+  const deck = $("deck"), ladder = $("ladder");
   deck.innerHTML = "";
-  rail.innerHTML = "<h2>Timeline</h2>";
+  ladder.querySelectorAll(".tick").forEach(t => t.remove());
   snaps.forEach((m, i) => {
     const c = document.createElement("div");
     c.className = "snap";
@@ -435,46 +615,32 @@ function build() {
     t.type = "button";
     t.className = "tick";
     t.dataset.i = i;
-    t.innerHTML = `<span class="dot"></span><span>${esc(when(m.created))}</span><span class="line"></span>`;
-    rail.appendChild(t);
+    t.innerHTML = `<span class="dot"></span><span class="lbl">${esc(when(m.created))}</span><span class="pip"></span>`;
+    ladder.appendChild(t);
   });
 }
 
-// Depth encodes age: the selected snapshot sits at the front, older ones
-// recede along Z. Positions are written straight to style so CSS transitions
-// animate them, and so a 1s poll never rebuilds the DOM mid-flight.
-function place() {
-  const cards = $("deck").children;
-  for (let i = 0; i < cards.length; i++) {
-    const d = i - sel, c = cards[i];
-    const past = d >= 0;
-    c.style.transform = `translate3d(0, ${d * -30}px, ${d * -190}px)`;
-    c.style.opacity = past ? Math.max(0, 1 - d * .17) : 0;
-    c.style.filter = past && d > 0 ? `blur(${Math.min(d * .9, 5)}px)` : "none";
-    c.style.zIndex = String(200 - Math.abs(d));
-    const dead = !past || d > 7;
-    c.style.pointerEvents = dead ? "none" : "auto";
-    c.setAttribute("aria-hidden", d === 0 ? "false" : "true");
-    c.querySelectorAll("button").forEach(b => { b.tabIndex = d === 0 ? 0 : -1; b.disabled = d !== 0 || busy; });
-  }
-  for (const t of $("rail").querySelectorAll(".tick"))
-    t.setAttribute("aria-current", String(Number(t.dataset.i) === sel));
+const MAX_FLIGHT = 5;
+function go(i) {
+  const n = clamp(i, 0, snaps.length - 1);
+  if (n === sel) return;
+  sel = n;
+  // Bound the journey. Jumping from one end of a long history to the other
+  // shouldn't fly past forty cards, and it keeps the destination inside the
+  // rendered range so it stays focusable the whole way.
+  if (Math.abs(sel - pos) > MAX_FLIGHT) pos = sel + Math.sign(pos - sel) * MAX_FLIGHT;
   $("count").textContent = snaps.length ? `${sel + 1} of ${snaps.length}` : "";
   $("newer").disabled = sel <= 0;
   $("older").disabled = sel >= snaps.length - 1;
-  targetDrift = sel;
-  const cur = $("rail").querySelector('[aria-current="true"]');
-  if (cur) cur.scrollIntoView({block: "nearest", behavior: REDUCED ? "auto" : "smooth"});
+  const t = $("ladder").querySelectorAll(".tick")[sel];
+  if (t) t.scrollIntoView({block: "nearest", behavior: REDUCED ? "auto" : "smooth"});
+  // Reflect the new selection (aria-current, focusability) immediately rather
+  // than when the spring settles — assistive tech shouldn't wait on animation.
+  layout();
+  kick();
 }
 
-function go(i) {
-  const n = Math.max(0, Math.min(snaps.length - 1, i));
-  if (n === sel) return;
-  sel = n;
-  place();
-}
-
-/* ── Server ───────────────────────────────────────────────────────────── */
+/* ═══ Server ═════════════════════════════════════════════════════════════ */
 async function post(path, body) {
   const r = await fetch(path, {
     method: "POST",
@@ -501,20 +667,33 @@ function render(s) {
     // front of the stack; otherwise stay on whatever they were looking at.
     const keep = snaps.findIndex(m => m.id === prevTop);
     sel = wasNewest || keep < 0 ? 0 : keep;
+    if (!wasNewest && keep > 0) pos = keep; // don't fly across the whole stack
+    // Enter from depth, once, on the first paint that actually has cards —
+    // doing it at boot would let the spring settle before any data arrived.
+    if (!booted) { booted = true; if (!REDUCED) { pos = Math.min(3.2, snaps.length); vel = 0; } }
+    $("count").textContent = snaps.length ? `${sel + 1} of ${snaps.length}` : "";
+    $("newer").disabled = sel <= 0;
+    $("older").disabled = sel >= snaps.length - 1;
+    redraw = true;
   }
 
   busy = s.job.running;
   $("snap").disabled = busy;
   $("empty").hidden = snaps.length > 0;
   $("timenav").hidden = snaps.length < 2;
-  place();
+  // Lay out synchronously as well as via the spring: requestAnimationFrame
+  // does not run in a background tab, and without this the deck would sit
+  // unpositioned until the tab was focused.
+  layout();
+  redraw = true;
+  kick();
 
   const j = s.job, show = busy || (j.lines && j.lines.length) || j.error;
   $("jobcard").hidden = !show;
   if (show) {
     $("jobtitle").innerHTML = busy
       ? `<span class="spin"></span>${esc(j.kind)} running…`
-      : j.error ? `<span class="bad">${esc(j.kind)} failed</span>` : `${esc(j.kind)} finished`;
+      : j.error ? `<span class="bad">${esc(j.kind)} failed</span>` : `<span class="ok">${esc(j.kind)} finished</span>`;
     const log = $("joblog");
     log.textContent = (j.lines || []).join("\n") + (j.error ? "\n\n" + j.error : "");
     log.scrollTop = log.scrollHeight;
@@ -522,11 +701,21 @@ function render(s) {
 }
 
 async function refresh() {
-  try { render(await (await fetch("/api/state")).json()); }
-  catch { $("jobtitle").textContent = "rewind ui is not responding"; $("jobcard").hidden = false; }
+  let s;
+  // Only the fetch is guarded. Wrapping render() too would turn any bug in it
+  // into a bogus "not responding" message and swallow the stack trace.
+  try {
+    s = await (await fetch("/api/state")).json();
+  } catch {
+    $("jobtitle").innerHTML = `<span class="bad">rewind ui is not responding</span>`;
+    $("joblog").textContent = "The rewind process may have stopped. Restart it with `rewind ui`.";
+    $("jobcard").hidden = false;
+    return;
+  }
+  render(s);
 }
 
-/* ── Input ────────────────────────────────────────────────────────────── */
+/* ═══ Input ══════════════════════════════════════════════════════════════ */
 $("snap").addEventListener("click", () => post("/api/snapshot", {tag: $("tag").value.trim()}));
 $("newer").addEventListener("click", () => go(sel - 1));
 $("older").addEventListener("click", () => go(sel + 1));
@@ -561,12 +750,12 @@ let wheelLock = 0;
 $("stage").addEventListener("wheel", e => {
   if (e.target.closest(".rail, .job pre")) return;
   const now = Date.now();
-  if (now - wheelLock < 260 || Math.abs(e.deltaY) < 4) return;
+  if (now - wheelLock < 230 || Math.abs(e.deltaY) < 4) return;
   wheelLock = now;
   go(sel + (e.deltaY > 0 ? 1 : -1));
 }, {passive: true});
 
-/* ── Restore confirmation ─────────────────────────────────────────────── */
+/* ═══ Restore confirmation ═══════════════════════════════════════════════ */
 const dlg = $("confirm");
 let pending = null;
 
@@ -574,7 +763,7 @@ function askRestore(id) {
   const m = snaps.find(x => x.id === id);
   if (!m || busy) return;
   pending = id;
-  $("cwhat").innerHTML = `Roll <strong>${esc(project)}</strong> back to <strong>${esc(when(m.created))}</strong> (${esc(age(m.created))}), restoring ${(m.volumes||[]).length} volume(s):`;
+  $("cwhat").innerHTML = `Roll <strong>${esc(project)}</strong> back to <strong>${esc(when(m.created))}</strong> (${esc(age(m.created).toLowerCase())}), restoring ${(m.volumes||[]).length} volume(s):`;
   $("cvols").innerHTML = (m.volumes || []).map(v => `<li><code>${esc(v.name)}</code></li>`).join("")
     || "<li>No volumes in this snapshot</li>";
   $("cinput").value = "";
@@ -594,8 +783,13 @@ $("cform").addEventListener("submit", e => {
   post("/api/restore", {id: pending, confirm: project});
 });
 
+/* ═══ Boot ═══════════════════════════════════════════════════════════════ */
+seed();
 refresh();
 setInterval(refresh, 1000);
+kick();
+setTimeout(() => { if (snaps.length > 1) $("hint").classList.add("show"); }, 900);
+setTimeout(() => $("hint").classList.remove("show"), 7000);
 </script>
 </body>
 </html>
