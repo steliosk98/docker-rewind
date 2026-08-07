@@ -90,6 +90,10 @@ func cmdUI(args []string) error {
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		// The page is compiled into the binary and the session token changes
+		// every run, so a cached copy is never right — and a stale one silently
+		// talks to the API with a dead token.
+		w.Header().Set("Cache-Control", "no-store")
 		w.Write(b)
 	})
 

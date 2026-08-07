@@ -73,9 +73,22 @@ prompt for scripts.
 ### GUI
 
 `rewind ui` serves a single embedded page on `127.0.0.1:7654` and opens it.
-Same binary, no build step, no npm. It binds localhost only, restore asks you to
-type the project name, and mutating endpoints are behind a startup token — any
-web page you visit can POST to localhost, and this one deletes volumes.
+
+Snapshots are stacked in depth like Time Machine: the current state sits at the
+front and older ones recede into the starfield, dimming and blurring as they go.
+A dated timeline runs down the right edge. Travel with the arrow keys, the scroll
+wheel, `Home`/`End`, the timeline, or by clicking any receding snapshot. Each
+card shows its volumes, its pinned image digests, and anything the snapshot
+could not capture.
+
+Same binary, no build step, no npm, no CDN — one `go:embed`-ed HTML file and
+system fonts, because the binary makes no outbound connections. Light and dark
+both verified at 4.5:1 or better, full keyboard navigation, and
+`prefers-reduced-motion` drops the travel while keeping the layout.
+
+It binds localhost only, restore makes you type the project name, and mutating
+endpoints are behind a startup token — any web page you visit can POST to
+localhost, and this one deletes volumes.
 
 Don't put it behind a reverse proxy. It has no authentication and
 [won't be getting any](CONTRIBUTING.md).
