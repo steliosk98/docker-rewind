@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Referrer-Policy stops the token in the URL fragment leaking anywhere. -->
+<meta name="referrer" content="no-referrer">
+<title>Docker Rewind</title>
+<style>
+  :root{--bg:#fbfbfa;--fg:#1a1a19;--dim:#6b6b68;--line:#e2e2df;--card:#fff;--accent:#2f6f4f;--warn:#8a5a00;--danger:#a33}
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#16181a;--fg:#e8e8e6;--dim:#8f9295;--line:#2b2e31;--card:#1d2023;--accent:#6cc08b;--warn:#d9a441;--danger:#e0736f}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+  main{max-width:900px;margin:0 auto;padding:2rem 1.25rem 4rem}
+  h1{font-size:1.35rem;margin:0 0 .2rem;letter-spacing:-.01em}
+  h1 span{color:var(--accent)}
+  .sub{color:var(--dim);font-size:.85rem;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-all}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem;margin:1.25rem 0}
+  .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  input{flex:1;min-width:11rem;padding:.5rem .65rem;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg);font:inherit}
+  button{padding:.5rem .95rem;border:1px solid var(--line);border-radius:7px;background:var(--accent);color:#fff;font:inherit;font-weight:550;cursor:pointer}
+  button.ghost{background:transparent;color:var(--fg)}
+  button.ghost:hover:not(:disabled){border-color:var(--danger);color:var(--danger)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-weight:600;padding:0 .5rem .5rem 0}
+  td{padding:.55rem .5rem .55rem 0;border-top:1px solid var(--line);vertical-align:top}
+  td.id{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.82rem}
+  .tag{display:inline-block;background:var(--line);border-radius:5px;padding:.05rem .4rem;font-size:.78rem}
+  .warn{color:var(--warn);font-size:.8rem;display:block;margin-top:.25rem}
+  pre{margin:0;white-space:pre-wrap;font:12.5px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--dim);max-height:15rem;overflow:auto}
+  .err{color:var(--danger);font-weight:550}
+  .muted{color:var(--dim)}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:.45rem;animation:p 1s ease-in-out infinite}
+  @keyframes p{50%{opacity:.25}}
+  footer{color:var(--dim);font-size:.78rem;margin-top:2rem;border-top:1px solid var(--line);padding-top:.9rem}
+</style>
+</head>
+<body>
+<main>
+  <h1>Docker <span>Rewind</span> — <span id="project">…</span></h1>
+  <div class="sub" id="file"></div>
+
+  <div class="card">
+    <div class="row">
+      <input id="tag" placeholder="Tag (optional), e.g. pre-upgrade" maxlength="60">
+      <button id="snap">Take snapshot</button>
+    </div>
+    <p class="muted" style="margin:.7rem 0 0;font-size:.83rem">
+      Stops the stack, archives every named volume, records image digests, starts it again.
+    </p>
+  </div>
+
+  <div class="card" id="jobcard" hidden>
+    <strong id="jobtitle"></strong>
+    <pre id="joblog"></pre>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Snapshot</th><th>Tag</th><th>Size</th><th>Age</th><th></th></tr></thead>
+      <tbody id="rows"><tr><td colspan="5" class="muted">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <footer>
+    Snapshots live in <code>~/.docker-rewind/</code> as plain <code>.tar.gz</code> + JSON.
+    Restore <strong>permanently deletes</strong> current volume data.
+    Snapshots sit on this host — they are not a substitute for offsite backups.
+  </footer>
+</main>
+
+<script>
+// The startup token lives in the URL fragment: never sent to the server in a
+// request line, never written to logs, unreadable cross-origin.
+const TOKEN = location.hash.slice(1);
+let project = "", busy = false;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const bytes = n => { const u=["B","KB","MB","GB","TB"]; let i=0; while(n>=1024&&i<4){n/=1024;i++} return (i?n.toFixed(1):n)+" "+u[i]; };
+const age = iso => { const s=(Date.now()-new Date(iso))/1000;
+  if(s<60)return"just now"; if(s<3600)return Math.floor(s/60)+"m ago";
+  if(s<86400)return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; };
+
+async function post(path, body) {
+  const r = await fetch(path, {
+    method: "POST",
+    headers: {"Content-Type": "application/json", "X-Rewind-Token": TOKEN},
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) alert(await r.text());
+  refresh();
+}
+
+function render(s) {
+  project = s.project;
+  $("project").textContent = s.project;
+  $("file").textContent = s.file;
+
+  busy = s.job.running;
+  $("snap").disabled = busy;
+  const show = busy || s.job.lines?.length || s.job.error;
+  $("jobcard").hidden = !show;
+  if (show) {
+    $("jobtitle").innerHTML = busy
+      ? `<span class="dot"></span>${esc(s.job.kind)} running…`
+      : (s.job.error ? `<span class="err">${esc(s.job.kind)} failed</span>` : `${esc(s.job.kind)} finished`);
+    $("joblog").textContent = (s.job.lines || []).join("\n") + (s.job.error ? "\n\n" + s.job.error : "");
+    $("joblog").scrollTop = $("joblog").scrollHeight;
+  }
+
+  if (!s.snapshots.length) {
+    $("rows").innerHTML = `<tr><td colspan="5" class="muted">No snapshots yet.</td></tr>`;
+    return;
+  }
+  $("rows").innerHTML = s.snapshots.map(m => {
+    const size = (m.volumes || []).reduce((a, v) => a + v.bytes, 0);
+    const warns = (m.warnings || []).map(w => `<span class="warn">! ${esc(w)}</span>`).join("");
+    return `<tr>
+      <td class="id">${esc(m.id)}${warns}</td>
+      <td>${m.tag ? `<span class="tag">${esc(m.tag)}</span>` : ""}</td>
+      <td>${bytes(size)}</td>
+      <td class="muted">${age(m.created)}</td>
+      <td style="text-align:right"><button class="ghost" data-id="${esc(m.id)}" ${busy ? "disabled" : ""}>Restore</button></td>
+    </tr>`;
+  }).join("");
+}
+
+$("rows").addEventListener("click", e => {
+  const id = e.target.dataset?.id;
+  if (!id || busy) return;
+  const typed = prompt(
+    `Restore ${id}?\n\nThis PERMANENTLY DELETES the current contents of this project's volumes. There is no undo.\n\nType the project name to confirm:`);
+  if (typed === null) return;
+  if (typed !== project) return alert("That didn't match the project name. Nothing was changed.");
+  post("/api/restore", {id, confirm: typed});
+});
+
+$("snap").addEventListener("click", () => post("/api/snapshot", {tag: $("tag").value.trim()}));
+
+async function refresh() {
+  try { render(await (await fetch("/api/state")).json()); }
+  catch { $("rows").innerHTML = `<tr><td colspan="5" class="err">rewind ui is not responding.</td></tr>`; }
+}
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>

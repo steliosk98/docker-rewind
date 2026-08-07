@@ -1,0 +1,7 @@
+# `go build -o rewind` and `go build ./...` produce differently-named binaries
+rewind
+rewind.exe
+docker-rewind
+docker-rewind.exe
+/dist/
+*.tar.gz

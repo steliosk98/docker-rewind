@@ -1,0 +1,56 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go build ./...
+      - run: go test ./...
+
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then echo "not gofmt'd:"; echo "$out"; exit 1; fi
+
+      - run: go vet ./...
+
+      # Hard rule 1: zero third-party dependencies. See CONTRIBUTING.md.
+      - name: No third-party dependencies
+        run: |
+          if grep -qE '^\s*require' go.mod || [ -f go.sum ]; then
+            echo "go.mod gained a dependency, or go.sum appeared."
+            echo "Docker Rewind stays dependency-free — see CONTRIBUTING.md."
+            exit 1
+          fi
+
+      # Hard rule 3: no build step. The GUI is one embedded file.
+      - name: No build step
+        run: |
+          if ls package.json package-lock.json yarn.lock 2>/dev/null | grep -q .; then
+            echo "A JS build step appeared. The GUI is one embedded HTML file."
+            exit 1
+          fi

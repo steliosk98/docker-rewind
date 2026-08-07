@@ -1,0 +1,5 @@
+# Keep LF everywhere: the CI workflow runs bash on Linux runners, and CRLF in a
+# shell script is a syntax error.
+* text=auto eol=lf
+*.exe binary
+*.tar.gz binary
