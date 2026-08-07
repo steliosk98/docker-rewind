@@ -15,6 +15,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+          cache: false # no go.sum to key a cache off
 
       # Plain cross-compilation. No goreleaser: one `go build` per target is
       # less machinery than a config file describing how to run `go build`.

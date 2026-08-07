@@ -20,6 +20,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+          # No dependencies means no go.sum, and setup-go's cache keys off it.
+          # Leaving it on logs a failed cache restore on every single run.
+          cache: false
       - run: go build ./...
       - run: go test ./...
 
@@ -30,6 +33,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+          # No dependencies means no go.sum, and setup-go's cache keys off it.
+          # Leaving it on logs a failed cache restore on every single run.
+          cache: false
 
       - name: gofmt
         run: |
